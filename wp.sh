@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-# version   <your version>
-# executed  <how it should be executed>
-# task      <description>
-
 set -euEo pipefail   # Error handling
 #shopt -s extglob     # Expand file globs 
 
@@ -11,11 +7,21 @@ VERSION="0.0.1"
 SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 #SCRIPT_PATH="$(cd -- "$(dirname "$0")" > /dev/null 2>&1 ; pwd -P )"
 
+# --- START OF ENV VARS ---
+
 WP_TEMP_DIR="wp-content/temp"
 WP_SITE_DIR="${PWD}/test"
 WP_CONFIG_FILE="wp-config.php"
 
-WP_DB_NAME="works"
+WP_DB_NAME="dbname"
+WP_DB_USER="dbuser"
+WP_DB_PASSWORD="dbpassword"
+WP_DB_HOST="localhost"
+WP_DB_CHARSET="utf-8"
+WP_DB_COLLATE=""
+
+# --- END OF ENV VARS ---
+
 
 function _fn_cleanup {
 	unset WP_TEMP_DIR
@@ -139,7 +145,6 @@ function fn_config_set {
 		return 1
 	fi
 
-	# TODO Set numbers, too
 	# TODO Set table_prefix, too
 	if [ "${KEY}" == 'table_prefix' ]; then
 		echo "Setting the table_prefix is not implemented yet."
@@ -209,11 +214,19 @@ function fn_core_latest {
 	_fn_msg "Upgrading top level scripts..."
 	cp -rf "${WP_SITE_DIR}/${WP_TEMP_DIR}"/wordpress/*.php "${WP_SITE_DIR}/"
 
+	# TODO Check plugins
+	# TODO Check themes
+
 	if [ ! -f "${WP_SITE_DIR}/${WP_CONFIG_FILE}" ]; then
 		_fn_msg "Oh, no wp-config. Let's initialize it..."
 		cp "${WP_SITE_DIR}/${WP_TEMP_DIR}/wordpress/wp-config-sample.php" "${WP_SITE_DIR}/${WP_CONFIG_FILE}"
 
 		fn_config_set "DB_NAME" "${WP_DB_NAME}"
+		fn_config_set "DB_USER" "${WP_DB_USER}"
+		fn_config_set "DB_PASSWORD" "${WP_DB_PASSWORD}"
+		fn_config_set "DB_HOST" "${WP_DB_HOST}"
+		fn_config_set "DB_CHARSET" "${WP_DB_CHARSET}"
+		fn_config_set "DB_COLLATE" "${WP_DB_COLLATE}"
 	fi
 
 	_fn_msg "Cleanup ..."
