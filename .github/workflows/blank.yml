@@ -1,0 +1,22 @@
+name: shellcheck
+
+on:
+  push:
+    paths-ignore:
+      - '.github/workflows/*'
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Lint check
+        uses: azohra/shell-linter@latest
+        with:
+          path: "wp.sh"
