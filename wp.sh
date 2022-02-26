@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-# version   <your version>
-# executed  <how it should be executed>
-# task      <description>
-
 set -euEo pipefail   # Error handling
 #shopt -s extglob     # Expand file globs 
 
