@@ -12,6 +12,7 @@ SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 WP_TEMP_DIR="wp-content/temp"
 WP_SITE_DIR="${PWD}/test"
 WP_CONFIG_FILE="wp-config.php"
+WP_SALT_LENGTH=80
 
 WP_DB_NAME="dbname"
 WP_DB_USER="dbuser"
@@ -182,14 +183,25 @@ function fn_config_set {
 	rm -rf "${WP_SITE_DIR}/${WP_CONFIG_FILE}.tmp"
 }
 
+function fn_config_resalt {
+	fn_config_set 'AUTH_KEY' "$(openssl rand -base64 ${WP_SALT_LENGTH} | tr -d '\n/\"')"
+	fn_config_set 'SECURE_AUTH_KEY' "$(openssl rand -base64 ${WP_SALT_LENGTH} | tr -d '\n/\"')"
+	fn_config_set 'LOGGED_IN_KEY' "$(openssl rand -base64 ${WP_SALT_LENGTH} | tr -d '\n/\"')"
+	fn_config_set 'NONCE_KEY' "$(openssl rand -base64 ${WP_SALT_LENGTH} | tr -d '\n/\"')"
+	fn_config_set 'AUTH_SALT' "$(openssl rand -base64 ${WP_SALT_LENGTH} | tr -d '\n/\"')"
+	fn_config_set 'SECURE_AUTH_SALT' "$(openssl rand -base64 ${WP_SALT_LENGTH} | tr -d '\n/\"')"
+	fn_config_set 'LOGGED_IN_SALT' "$(openssl rand -base64 ${WP_SALT_LENGTH} | tr -d '\n/\"')"
+	fn_config_set 'NONCE_SALT' "$(openssl rand -base64 ${WP_SALT_LENGTH} | tr -d '\n/\"')"
+}
+
+# --- CORE ---------------------------------------------------------------------
+
 #
 # Downloads and installs the latest WordPress
 #
 function fn_core_latest {
 	# TODO Create the force attribute to override an existing installation
 	# TODO Make the wordpress file url a variable.
-	# TODO Hash the salts
-	# TODO Set the db parameters
 
 	_fn_msg "Cleaning up temp folder..."
 	mkdir -p "${WP_SITE_DIR}/${WP_TEMP_DIR}"
@@ -227,6 +239,8 @@ function fn_core_latest {
 		fn_config_set "DB_HOST" "${WP_DB_HOST}"
 		fn_config_set "DB_CHARSET" "${WP_DB_CHARSET}"
 		fn_config_set "DB_COLLATE" "${WP_DB_COLLATE}"
+
+		fn_config_resalt
 	fi
 
 	_fn_msg "Cleanup ..."
@@ -259,6 +273,7 @@ function fn_main {
 					list ) fn_config_list; exit;;
 					get ) fn_config_get "${3}" "${4:-}"; exit;;
 					set ) fn_config_set "${3}" "${4}"; exit;;
+					resalt ) fn_config_resalt; exit;;
 					* ) _fn_msg "Manages the wp-config.php file.\n  wp config list\n  wp config [ get | set ] <key> <value>\n"; exit;;
 				esac;;
 			
