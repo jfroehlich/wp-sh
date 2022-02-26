@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+# version   <your version>
+# executed  <how it should be executed>
+# task      <description>
+
 set -euEo pipefail   # Error handling
 #shopt -s extglob     # Expand file globs 
 
@@ -135,22 +139,41 @@ function fn_config_set {
 		return 1
 	fi
 
-	# TODO Set booleans and numbers, too
+	# TODO Set numbers, too
 	# TODO Set table_prefix, too
+	if [ "${KEY}" == 'table_prefix' ]; then
+		echo "Setting the table_prefix is not implemented yet."
+	fi
 
-	# inspired from: https://superuser.com/questions/590630/sed-how-to-replace-line-if-found-or-append-to-end-of-file-if-not-found
-	# should be posix compliend and run on osx and linux
-	sed -i.tmp -E -e "/^[[:space:]]*define\([[:space:]]*['\"]${KEY}['\"][[:space:]]*,[[:space:]]*/{" \
-		-e 'h' \
-		-e "s/.*/define( '${KEY}', '${VALUE}' );/" \
-		-e '}' \
-		-e '/Add any custom values between this line and the "stop editing" line./{x' \
-		-e '/^$/{' \
-		-e "s//define( '${KEY}', '${VALUE}' );/" \
-		-e 'H' \
-		-e '}' \
-		-e 'x' \
-		-e '}' "${WP_SITE_DIR}/${WP_CONFIG_FILE}"
+	if [ "${VALUE}" == 'true' ] || [ "${VALUE}" == 'false' ] || [[ "${VALUE}" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
+		# inspired from: https://superuser.com/questions/590630/sed-how-to-replace-line-if-found-or-append-to-end-of-file-if-not-found
+		# should be posix compliend and run on osx and linux
+		sed -i.tmp -E -e "/^[[:space:]]*define\([[:space:]]*['\"]${KEY}['\"][[:space:]]*,[[:space:]]*/{" \
+			-e 'h' \
+			-e "s/.*/define( '${KEY}', ${VALUE} );/" \
+			-e '}' \
+			-e '/Add any custom values between this line and the "stop editing" line./{x' \
+			-e '/^$/{' \
+			-e "s//define( '${KEY}', ${VALUE} );/" \
+			-e 'H' \
+			-e '}' \
+			-e 'x' \
+			-e '}' "${WP_SITE_DIR}/${WP_CONFIG_FILE}"
+	else
+		# inspired from: https://superuser.com/questions/590630/sed-how-to-replace-line-if-found-or-append-to-end-of-file-if-not-found
+		# should be posix compliend and run on osx and linux
+		sed -i.tmp -E -e "/^[[:space:]]*define\([[:space:]]*['\"]${KEY}['\"][[:space:]]*,[[:space:]]*/{" \
+			-e 'h' \
+			-e "s/.*/define( '${KEY}', '${VALUE}' );/" \
+			-e '}' \
+			-e '/Add any custom values between this line and the "stop editing" line./{x' \
+			-e '/^$/{' \
+			-e "s//define( '${KEY}', '${VALUE}' );/" \
+			-e 'H' \
+			-e '}' \
+			-e 'x' \
+			-e '}' "${WP_SITE_DIR}/${WP_CONFIG_FILE}"
+	fi
 	rm -rf "${WP_SITE_DIR}/${WP_CONFIG_FILE}.tmp"
 }
 
