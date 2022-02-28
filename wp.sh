@@ -9,9 +9,12 @@ SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 
 # --- START OF ENV VARS ---
 
-WP_TEMP_DIR="wp-content/temp"
 WP_SITE_DIR="${PWD}/test"
-WP_CONFIG_FILE="wp-config.php"
+WP_CONTENT_DIR="${WP_SITE_DIR}/wp-content"
+WP_PLUGIN_DIR="${WP_SITE_DIR}/wp-content/plugins"
+WP_THEME_DIR="${WP_SITE_DIR}/wp-content/themes"
+WP_TEMP_DIR="${WP_SITE_DIR}/wp-content/temp"
+WP_CONFIG_FILE="${WP_SITE_DIR}/wp-config.php"
 WP_SALT_LENGTH=80
 
 WP_DB_NAME="dbname"
@@ -20,6 +23,16 @@ WP_DB_PASSWORD="dbpassword"
 WP_DB_HOST="localhost"
 WP_DB_CHARSET="utf-8"
 WP_DB_COLLATE=""
+
+WP_INSTALLED_PLUGINS=(
+	"one"
+	"two"
+)
+
+WP_REMOVED_PLUGINS=(
+	"one"
+	"two"
+)
 
 # --- END OF ENV VARS ---
 
@@ -99,8 +112,8 @@ function fn_load_env {
 # --- wp-config ---
 
 function fn_config_list {
-	if [ ! -f "${WP_SITE_DIR}/${WP_CONFIG_FILE}" ]; then
-		_fn_msg "wp-config does not exist at '${WP_SITE_DIR}/${WP_CONFIG_FILE}'"
+	if [ ! -f "${WP_CONFIG_FILE}" ]; then
+		_fn_msg "wp-config does not exist at '${WP_CONFIG_FILE}'"
 		return 1
 	fi
 
@@ -108,27 +121,27 @@ function fn_config_list {
 		-e "s/^[[:space:]]*define\([[:space:]]*['\"](.*)['\"][[:space:]]*,[[:space:]]*['\"](.*)['\"][[:space:]]*\);[[:space:]]*$/\"\1\": \"\2\"/p" \
 		-e "s/^[[:space:]]*define\([[:space:]]*['\"](.*)['\"][[:space:]]*,[[:space:]]*(false|true|[[:digit:]]\+)[[:space:]]*\);[[:space:]]*$/\"\1\": \2/p" \
 		-e "s/^[[:space:]]*\\\$table_prefix[[:space:]]*=[[:space:]]*[\"'](.*)[\"'][[:space:]]*;/\"table_prefix\": \"\1\"/p" \
-		"${WP_SITE_DIR}/${WP_CONFIG_FILE}"
+		"${WP_CONFIG_FILE}"
 }
 
 function fn_config_get {
 	local name="$1"
 	local default="${2:-}"
 
-	if [ ! -r "${WP_SITE_DIR}/${WP_CONFIG_FILE}" ]; then
-		_fn_msg "wp-config does not exist at '${WP_SITE_DIR}/${WP_CONFIG_FILE}'"
+	if [ ! -r "${WP_CONFIG_FILE}" ]; then
+		_fn_msg "wp-config does not exist at '${WP_CONFIG_FILE}'"
 		return 1
 	fi
 
 	if [ "${name}" == 'table_prefix' ]; then
 		sed -En \
 			-e "s/^[[:space:]]*\\\$table_prefix[[:space:]]*=[[:space:]]*[\"'](.*)[\"'][[:space:]]*;/\1/p" \
-			"${WP_SITE_DIR}/${WP_CONFIG_FILE}" || echo "${default}"
+			"${WP_CONFIG_FILE}" || echo "${default}"
 	else 
 		sed -En \
 			-e "s/^[[:space:]]*define\([[:space:]]*['\"]${name}['\"][[:space:]]*,[[:space:]]*['\"](.*)['\"][[:space:]]*\);[[:space:]]*$/\1/p" \
 			-e "s/^[[:space:]]*define\([[:space:]]*['\"]${name}['\"][[:space:]]*,[[:space:]]*(false|true|[[:digit:]]\+)[[:space:]]*\);[[:space:]]*$/\1/p" \
-			"${WP_SITE_DIR}/${WP_CONFIG_FILE}" || echo "${default}"
+			"${WP_CONFIG_FILE}" || echo "${default}"
 	fi
 }
 
@@ -136,13 +149,13 @@ function fn_config_set {
 	local KEY="${1}"
 	local VALUE="${2}"
 
-	if [ ! -f "${WP_SITE_DIR}/${WP_CONFIG_FILE}" ]; then
-		_fn_msg "wp-config does not exist at '${WP_SITE_DIR}/${WP_CONFIG_FILE}'"
+	if [ ! -f "${WP_CONFIG_FILE}" ]; then
+		_fn_msg "wp-config does not exist at '${WP_CONFIG_FILE}'"
 		return 1
 	fi
 	
-	if [ ! -w "${WP_SITE_DIR}/${WP_CONFIG_FILE}" ]; then
-		_fn_msg "wp-config is not writable at '${WP_SITE_DIR}/${WP_CONFIG_FILE}'"
+	if [ ! -w "${WP_CONFIG_FILE}" ]; then
+		_fn_msg "wp-config is not writable at '${WP_CONFIG_FILE}'"
 		return 1
 	fi
 
@@ -164,7 +177,7 @@ function fn_config_set {
 			-e 'H' \
 			-e '}' \
 			-e 'x' \
-			-e '}' "${WP_SITE_DIR}/${WP_CONFIG_FILE}"
+			-e '}' "${WP_CONFIG_FILE}"
 	else
 		# inspired from: https://superuser.com/questions/590630/sed-how-to-replace-line-if-found-or-append-to-end-of-file-if-not-found
 		# should be posix compliend and run on osx and linux
@@ -178,9 +191,9 @@ function fn_config_set {
 			-e 'H' \
 			-e '}' \
 			-e 'x' \
-			-e '}' "${WP_SITE_DIR}/${WP_CONFIG_FILE}"
+			-e '}' "${WP_CONFIG_FILE}"
 	fi
-	rm -rf "${WP_SITE_DIR}/${WP_CONFIG_FILE}.tmp"
+	rm -rf "${WP_CONFIG_FILE}.tmp"
 }
 
 function fn_config_resalt {
@@ -203,35 +216,48 @@ function fn_core_latest {
 	# TODO Create the force attribute to override an existing installation
 	# TODO Make the wordpress file url a variable.
 
+	if [ ! -w "${WP_SITE_DIR}" ]; then
+		mkdir -p "${WP_SITE_DIR}"
+	fi
+
 	_fn_msg "Cleaning up temp folder..."
-	mkdir -p "${WP_SITE_DIR}/${WP_TEMP_DIR}"
-	rm -rf "${WP_SITE_DIR}/${WP_TEMP_DIR}/wordpress" || true
-	rm -rf "${WP_SITE_DIR}/${WP_TEMP_DIR}/latest.tar.gz" || true
+	mkdir -p "${WP_TEMP_DIR}"
+	rm -rf "${WP_TEMP_DIR}/wordpress" || true
+	rm -rf "${WP_TEMP_DIR}/latest.tar.gz" || true
 
 	_fn_msg "Downloading and unpacking the latest WordPress in temp folder..."
-	(cd "${WP_SITE_DIR}/${WP_TEMP_DIR}" && curl -O "https://wordpress.org/latest.tar.gz")
-	(cd "${WP_SITE_DIR}/${WP_TEMP_DIR}" && tar -zxvf latest.tar.gz)
+	(cd "${WP_TEMP_DIR}" && curl -O "https://wordpress.org/latest.tar.gz")
+	(cd "${WP_TEMP_DIR}" && tar -zxvf latest.tar.gz)
 	
 	_fn_msg "Setting WordPress in maintenance mode..."
 	touch "${WP_SITE_DIR}/.maintenance"
 
 	_fn_msg "Upgrading admin..."
-	mv -f "${WP_SITE_DIR}/wp-admin" "${WP_SITE_DIR}/wp-admin.old" || true
-	mv -f "${WP_SITE_DIR}/${WP_TEMP_DIR}/wordpress/wp-admin" "${WP_SITE_DIR}/"
+	mv -f "wp-admin" "${WP_SITE_DIR}/wp-admin.old" || true
+	mv -f "${WP_TEMP_DIR}/wordpress/wp-admin" "${WP_SITE_DIR}/"
 
 	_fn_msg "Upgrading includes..."
 	mv -f "${WP_SITE_DIR}/wp-includes" "${WP_SITE_DIR}/wp-includes.old" || true
-	mv -f "${WP_SITE_DIR}/${WP_TEMP_DIR}/wordpress/wp-includes" "${WP_SITE_DIR}/"
+	mv -f "${WP_TEMP_DIR}/wordpress/wp-includes" "${WP_SITE_DIR}/"
 
 	_fn_msg "Upgrading top level scripts..."
-	cp -rf "${WP_SITE_DIR}/${WP_TEMP_DIR}"/wordpress/*.php "${WP_SITE_DIR}/"
+	cp -rf "${WP_TEMP_DIR}"/wordpress/*.php "${WP_SITE_DIR}/"
 
-	# TODO Check plugins
-	# TODO Check themes
+	if [ ! -d "${WP_PLUGIN_DIR}" ]; then
+		mkdir -p "${WP_PLUGIN_DIR}"	
+		printf "<?php\n// Silence is golden.\n" > "${WP_PLUGIN_DIR}/index.php"
+		# TODO Download and unpack required plugins
+	fi
 
-	if [ ! -f "${WP_SITE_DIR}/${WP_CONFIG_FILE}" ]; then
+	if [ ! -d "${WP_THEME_DIR}" ]; then
+		mkdir -p "${WP_THEME_DIR}"	
+		printf "<?php\n// Silence is golden.\n" > "${WP_THEME_DIR}/index.php"
+		# TODO Download and unpack required themes
+	fi
+
+	if [ ! -f "${WP_CONFIG_FILE}" ]; then
 		_fn_msg "Oh, no wp-config. Let's initialize it..."
-		cp "${WP_SITE_DIR}/${WP_TEMP_DIR}/wordpress/wp-config-sample.php" "${WP_SITE_DIR}/${WP_CONFIG_FILE}"
+		cp "${WP_TEMP_DIR}/wordpress/wp-config-sample.php" "${WP_CONFIG_FILE}"
 
 		fn_config_set "DB_NAME" "${WP_DB_NAME}"
 		fn_config_set "DB_USER" "${WP_DB_USER}"
@@ -252,6 +278,30 @@ function fn_core_latest {
 	_fn_msg "Done. Please login to your site as admin to upgrade the db."
 }
 
+# --- PLUGIN FUNCTIONS ---
+
+function fn_plugin_latest {
+	local plugin_name="${1}"
+
+	PLUGIN_PACKAGE_URL=$(curl "https://wordpress.org/plugins/${plugin_name}/" 2>/dev/null | grep -Eo "https://downloads\.wordpress\.org/[a-zA-Z0-9./?=_%:-]*" | head -1)
+
+	# TODO Check if the plugin name is set.
+	_fn_msg "Downloading from '${PLUGIN_PACKAGE_URL}'"
+	(cd "${WP_TEMP_DIR}" && curl -O "${PLUGIN_PACKAGE_URL}")
+	(cd "${WP_TEMP_DIR}" && unzip "${PLUGIN_PACKAGE_URL##*/}")
+
+	if [ -d "${WP_PLUGIN_DIR}/${plugin_name}" ]; then
+		mv -f "${WP_PLUGIN_DIR}/${plugin_name}" "${WP_PLUGIN_DIR}/${plugin_name}.old"
+	fi
+
+	_fn_msg "Installing '${plugin_name}'. Cleanup..."
+	mv -f "${WP_TEMP_DIR}/${plugin_name}" "${WP_PLUGIN_DIR}/"
+
+	_fn_msg "Done. Cleanup..."
+	rm -rf "${WP_PLUGIN_DIR:?}/${plugin_name}.old"
+	rm -rf "${WP_TEMP_DIR:?}/plugin_name"
+	rm -rf "${WP_TEMP_DIR:?}/${PLUGIN_PACKAGE_URL##*/}"
+}
 
 # --- main ---
 
@@ -275,6 +325,12 @@ function fn_main {
 					set ) fn_config_set "${3}" "${4}"; exit;;
 					resalt ) fn_config_resalt; exit;;
 					* ) _fn_msg "Manages the wp-config.php file.\n  wp config list\n  wp config [ get | set ] <key> <value>\n"; exit;;
+				esac;;
+			
+			plugin )
+				case ${2:-} in
+				 	latest ) fn_plugin_latest "${3}"; exit;;
+					* ) _fn_msg "Manages plugins.\n wp plugin [ latest ] <plugin>\n"; exit;;
 				esac;;
 			
 			-h | --help ) fn_usage; exit ;;
