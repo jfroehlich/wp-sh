@@ -25,8 +25,9 @@ WP_DB_CHARSET="utf-8"
 WP_DB_COLLATE=""
 
 WP_INSTALLED_PLUGINS=(
-	"one"
-	"two"
+	"wordpress-seo"
+	"contact-form-7"
+	"duplicate-post"
 )
 
 WP_REMOVED_PLUGINS=(
@@ -243,12 +244,6 @@ function fn_core_latest {
 	_fn_msg "Upgrading top level scripts..."
 	cp -rf "${WP_TEMP_DIR}"/wordpress/*.php "${WP_SITE_DIR}/"
 
-	if [ ! -d "${WP_PLUGIN_DIR}" ]; then
-		mkdir -p "${WP_PLUGIN_DIR}"	
-		printf "<?php\n// Silence is golden.\n" > "${WP_PLUGIN_DIR}/index.php"
-		# TODO Download and unpack required plugins
-	fi
-
 	if [ ! -d "${WP_THEME_DIR}" ]; then
 		mkdir -p "${WP_THEME_DIR}"	
 		printf "<?php\n// Silence is golden.\n" > "${WP_THEME_DIR}/index.php"
@@ -267,6 +262,17 @@ function fn_core_latest {
 		fn_config_set "DB_COLLATE" "${WP_DB_COLLATE}"
 
 		fn_config_resalt
+	fi
+
+	if [ ! -d "${WP_PLUGIN_DIR}" ]; then
+	 	_fn_msg "Initializing the plugin directory"
+		mkdir -p "${WP_PLUGIN_DIR}"	
+		printf "<?php\n// Silence is golden.\n" > "${WP_PLUGIN_DIR}/index.php"
+
+		_fn_msg "Installing latest plugins..."
+		for plugin_name in "${WP_INSTALLED_PLUGINS[@]}"; do
+			fn_plugin_latest "${plugin_name}"
+		done
 	fi
 
 	_fn_msg "Cleanup ..."
