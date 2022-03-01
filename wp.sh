@@ -11,9 +11,9 @@ SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 
 WP_SITE_DIR="${PWD}/test"
 WP_CONTENT_DIR="${WP_SITE_DIR}/wp-content"
-WP_PLUGIN_DIR="${WP_SITE_DIR}/wp-content/plugins"
-WP_THEME_DIR="${WP_SITE_DIR}/wp-content/themes"
-WP_TEMP_DIR="${WP_SITE_DIR}/wp-content/temp"
+WP_PLUGIN_DIR="${WP_CONTENT_DIR}/plugins"
+WP_THEME_DIR="${WP_CONTENT_DIR}/themes"
+WP_TEMP_DIR="${WP_CONTENT_DIR}/temp"
 WP_CONFIG_FILE="${WP_SITE_DIR}/wp-config.php"
 WP_SALT_LENGTH=80
 
@@ -273,6 +273,11 @@ function fn_core_latest {
 		for plugin_name in "${WP_INSTALLED_PLUGINS[@]}"; do
 			fn_plugin_latest "${plugin_name}"
 		done
+
+		_fn_msg "Removing plugins..."
+		for plugin_name in "${WP_REMOVED_PLUGINS[@]}"; do
+			fn_plugin_remove "${plugin_name}"
+		done
 	fi
 
 	_fn_msg "Cleanup ..."
@@ -309,6 +314,12 @@ function fn_plugin_latest {
 	rm -rf "${WP_TEMP_DIR:?}/${PLUGIN_PACKAGE_URL##*/}"
 }
 
+function fn_plugin_remove {
+	local plugin_name="${1}"
+
+	_fn_msg "NOT IMPLEMENTED YET" 
+}
+
 # --- main ---
 
 function fn_main {
@@ -336,6 +347,7 @@ function fn_main {
 			plugin )
 				case ${2:-} in
 				 	latest ) fn_plugin_latest "${3}"; exit;;
+					remove ) fn_plugin_remove "${3}"; exit;; 
 					* ) _fn_msg "Manages plugins.\n wp plugin [ latest ] <plugin>\n"; exit;;
 				esac;;
 			
