@@ -106,7 +106,7 @@ function fn_version {
 	echo "${VERSION}"
 }
 
-function fn_load_env {
+function fn_env_load {
 	default_env="${PWD}/.env"
 	local env_path="${1:-$default_env}"
 	set -a
@@ -115,20 +115,20 @@ function fn_load_env {
 	set +a
 }
 
-function fn_test {
-	echo $WP_SITE_DIR
-	echo $WP_CONTENT_DIR
-	echo $WP_PLUGIN_DIR
-	echo $WP_THEME_DIR
-	echo $WP_TEMP_DIR
-	echo $WP_CONFIG_FILE
-	echo $WP_SALT_LENGTH
-	echo $WP_DB_NAME
-	echo $WP_DB_USER
-	echo $WP_DB_PASSWORD
-	echo $WP_DB_HOST
-	echo $WP_DB_CHARSET
-	echo $WP_DB_COLLATE
+function fn_env_show {
+	echo "${WP_SITE_DIR}"
+	echo "${WP_CONTENT_DIR}"
+	echo "${WP_PLUGIN_DIR}"
+	echo "${WP_THEME_DIR}"
+	echo "${WP_TEMP_DIR}"
+	echo "${WP_CONFIG_FILE}"
+	echo "${WP_SALT_LENGTH}"
+	echo "${WP_DB_NAME}"
+	echo "${WP_DB_USER}"
+	echo "${WP_DB_PASSWORD}"
+	echo "${WP_DB_HOST}"
+	echo "${WP_DB_CHARSET}"
+	echo "${WP_DB_COLLATE}"
 }
 
 # --- wp-config ---
@@ -344,15 +344,15 @@ function fn_plugin_remove {
 # --- main ---
 
 function fn_main {
+	# Try to load the local env for this project
 	if [ -f "${PWD}/.env" ]; then
-		fn_load_env "${PWD}/.env"
+		fn_env_load "${PWD}/.env"
 	fi
+
 	while :; do
 		case "${1:-}" in
-			-e | --env ) fn_load_env "${2:-}"; shift 2;;
+			-e | --env ) fn_env_load "${2:-}"; shift 2;;
 			-v | --version ) fn_version; exit;;
-
-			test ) fn_test; exit;;
 
 			core )
 				case ${2:-} in
