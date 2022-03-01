@@ -115,23 +115,7 @@ function fn_env_load {
 	set +a
 }
 
-function fn_env_show {
-	echo "${WP_SITE_DIR}"
-	echo "${WP_CONTENT_DIR}"
-	echo "${WP_PLUGIN_DIR}"
-	echo "${WP_THEME_DIR}"
-	echo "${WP_TEMP_DIR}"
-	echo "${WP_CONFIG_FILE}"
-	echo "${WP_SALT_LENGTH}"
-	echo "${WP_DB_NAME}"
-	echo "${WP_DB_USER}"
-	echo "${WP_DB_PASSWORD}"
-	echo "${WP_DB_HOST}"
-	echo "${WP_DB_CHARSET}"
-	echo "${WP_DB_COLLATE}"
-}
-
-# --- wp-config ---
+# --- CONFIG MANAGEMENT ---
 
 function fn_config_list {
 	if [ ! -f "${WP_CONFIG_FILE}" ]; then
@@ -291,9 +275,7 @@ function fn_core_latest {
 		printf "<?php\n// Silence is golden.\n" > "${WP_PLUGIN_DIR}/index.php"
 
 		_fn_msg "Installing latest plugins..."
-		for plugin_name in "${WP_INSTALLED_PLUGINS[@]}"; do
-			fn_plugin_latest "${plugin_name}"
-		done
+		fn_plugin_latest "--all"
 
 		_fn_msg "Removing plugins..."
 		for plugin_name in "${WP_REMOVED_PLUGINS[@]}"; do
@@ -313,11 +295,23 @@ function fn_core_latest {
 # --- PLUGIN FUNCTIONS ---
 
 function fn_plugin_latest {
-	local plugin_name="${1}"
+	local plugin_name="${1:-}"
 
+	if [ -z "${plugin_name}" ]; then
+		_fn_msg "No plugin to install"
+		return 1
+	fi
+
+	if [ "${plugin_name}" == '--all' ]; then
+		for plugin_name in "${WP_INSTALLED_PLUGINS[@]}"; do
+			fn_plugin_latest "${plugin_name}"
+		done
+		return
+	fi
+
+	_fn_msg "Finding the download link..."
 	PLUGIN_PACKAGE_URL=$(curl "https://wordpress.org/plugins/${plugin_name}/" 2>/dev/null | grep -Eo "https://downloads\.wordpress\.org/[a-zA-Z0-9./?=_%:-]*" | head -1)
 
-	# TODO Check if the plugin name is set.
 	_fn_msg "Downloading from '${PLUGIN_PACKAGE_URL}'"
 	(cd "${WP_TEMP_DIR}" && curl -O "${PLUGIN_PACKAGE_URL}")
 	(cd "${WP_TEMP_DIR}" && unzip "${PLUGIN_PACKAGE_URL##*/}")
