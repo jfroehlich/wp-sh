@@ -252,7 +252,9 @@ function fn_core_latest {
 	if [ ! -d "${WP_THEME_DIR}" ]; then
 		mkdir -p "${WP_THEME_DIR}"	
 		printf "<?php\n// Silence is golden.\n" > "${WP_THEME_DIR}/index.php"
-		# TODO Download and unpack required themes
+
+		_fn_msg "Installing latest themes..."
+		fn_theme_latest "--all"
 	fi
 
 	if [ ! -f "${WP_CONFIG_FILE}" ]; then
@@ -310,7 +312,7 @@ function fn_plugin_latest {
 	fi
 
 	_fn_msg "Finding the download link..."
-	PLUGIN_PACKAGE_URL=$(curl "https://wordpress.org/plugins/${plugin_name}/" 2>/dev/null | grep -Eo "https://downloads\.wordpress\.org/[a-zA-Z0-9./?=_%:-]*" | head -1)
+	PLUGIN_PACKAGE_URL=$(curl "https://wordpress.org/plugins/${plugin_name}/" 2>/dev/null | grep -Eo "https://downloads\.wordpress\.org/plugin/[a-zA-Z0-9./?=_%:-]*" | head -1)
 
 	_fn_msg "Downloading from '${PLUGIN_PACKAGE_URL}'"
 	(cd "${WP_TEMP_DIR}" && curl -O "${PLUGIN_PACKAGE_URL}")
@@ -333,6 +335,43 @@ function fn_plugin_remove {
 	local plugin_name="${1}"
 
 	_fn_msg "NOT IMPLEMENTED YET" 
+}
+
+# --- THEMES ---
+
+function fn_theme_latest {
+	local theme_name="${1:-}"
+
+	if [ -z "${theme_name}" ]; then
+		_fn_msg "No theme to install"
+		return 1
+	fi
+
+	if [ "${theme_name}" == '--all' ]; then
+		for theme_name in "${WP_INSTALLED_PLUGINS[@]}"; do
+			fn_plugin_latest "${theme_name}"
+		done
+		return
+	fi
+
+	_fn_msg "Finding the download link..."
+	PACKAGE_URL=$(curl "https://wordpress.org/themes/${theme_name}/" 2>/dev/null | grep -Eo "https://downloads\.wordpress\.org/theme/[a-zA-Z0-9./?=_%:-]*" | head -1)
+
+	_fn_msg "Downloading from '${PACKAGE_URL}'"
+	(cd "${WP_TEMP_DIR}" && curl -O "${PACKAGE_URL}")
+	(cd "${WP_TEMP_DIR}" && unzip "${PACKAGE_URL##*/}")
+
+	if [ -d "${WP_THEME_DIR}/${theme_name}" ]; then
+		mv -f "${WP_THEME_DIR}/${theme_name}" "${WP_THEME_DIR}/${theme_name}.old"
+	fi
+
+	_fn_msg "Installing '${theme_name}'. Cleanup..."
+	mv -f "${WP_TEMP_DIR}/${theme_name}" "${WP_THEME_DIR}/"
+
+	_fn_msg "Done. Cleanup..."
+	rm -rf "${WP_THEME_DIR:?}/${theme_name}.old"
+	rm -rf "${WP_TEMP_DIR:?}/theme_name"
+	rm -rf "${WP_TEMP_DIR:?}/${PACKAGE_URL##*/}"
 }
 
 # --- main ---
